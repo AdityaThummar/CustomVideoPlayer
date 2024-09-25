@@ -1,118 +1,154 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
-
-import React from 'react';
-import type {PropsWithChildren} from 'react';
 import {
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
+  ActivityIndicator,
+  Dimensions,
   StyleSheet,
   Text,
-  useColorScheme,
+  TextProps,
+  TouchableOpacity,
   View,
 } from 'react-native';
+import React, {useEffect, useRef, useState} from 'react';
+import Video, {VideoRef} from 'react-native-video';
 
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
+const App = () => {
+  const videoRef = useRef<VideoRef>();
+  console.log('🚀 ~ App ~ videoRef:', videoRef);
+  const [dimensions, setDimensions] = useState(Dimensions.get('window'));
+  const [currentTime, setCurrentTime] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isMute, setIsMute] = useState(false);
 
-type SectionProps = PropsWithChildren<{
-  title: string;
-}>;
+  useEffect(() => {
+    const dimensionListner = Dimensions.addEventListener(
+      'change',
+      ({window}) => {
+        setDimensions(window);
+      },
+    );
+    return () => dimensionListner.remove();
+  }, []);
 
-function Section({children, title}: SectionProps): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-  return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
-    </View>
-  );
-}
+  const Button = (props: TextProps) => {
+    const {onPress, ...other} = props;
+    return (
+      <TouchableOpacity onPress={onPress}>
+        <Text
+          {...other}
+          style={{
+            backgroundColor: 'red',
+            padding: 10,
+            borderRadius: 10,
+            overflow: 'hidden',
+          }}
+        />
+      </TouchableOpacity>
+    );
+  };
 
-function App(): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
+  const togglePlayer = () => {
+    setIsPlaying(pre => !pre);
+    isPlaying ? videoRef?.current?.pause() : videoRef?.current?.resume();
+  };
 
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
+  const seek = (duration, isMinus) => {
+    const multiplyVal = isMinus ? -1 : 1;
+    const newTime = currentTime + duration * multiplyVal;
+    videoRef.current?.seek(newTime);
+    setCurrentTime(newTime);
+    setIsLoading(true);
+    setTimeout(() => {
+      setIsLoading(false);
+    }, 500);
+  };
+
+  const toggleVolume = () => {
+    videoRef.current?.setVolume(isMute ? 1 : 0);
+    setIsMute(pre => !pre);
   };
 
   return (
-    <SafeAreaView style={backgroundStyle}>
-      <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={backgroundStyle.backgroundColor}
-      />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
-        <View
+    <>
+      {isLoading && <ActivityIndicator />}
+      <View>
+        <Video
+          source={{
+            uri: 'https://www.learningcontainer.com/wp-content/uploads/2020/05/sample-mp4-file.mp4?_=1',
+          }}
           style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
+            height: dimensions.height,
+            width: dimensions.width,
+            // backgroundColor: 'red',
+            transform: [
+              {
+                rotateZ: '0deg',
+              },
+            ],
+            position: 'absolute',
+            top: 0,
+            left: 0,
+          }}
+          resizeMode="contain"
+          paused
+          ref={videoRef}
+          onProgress={props => {
+            setCurrentTime(props.currentTime);
+          }}
+        />
+      </View>
+      <View
+        style={[
+          StyleSheet.absoluteFill,
+          {
+            // backgroundColor: 'yellow',
+            zIndex: 1,
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexDirection: 'row',
+            gap: 50,
+          },
+        ]}>
+        {!isLoading && <Button onPress={() => seek(10, true)}>-10</Button>}
+        <Button onPress={togglePlayer}>{isPlaying ? 'Pause' : 'Play'}</Button>
+        {!isLoading && <Button onPress={() => seek(10, false)}>+10</Button>}
+      </View>
+      <View>
+        <Text
+          style={{
+            backgroundColor: 'red',
+            position: 'absolute',
+            bottom: 0,
           }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+          BG Sound
+        </Text>
+      </View>
+      <View
+        style={{
+          position: 'absolute',
+          zIndex: 2,
+          bottom: 30,
+          left: 50,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 30,
+        }}>
+        <Button onPress={toggleVolume}>BG Sound</Button>
+        <Button>BG Sound</Button>
+      </View>
+      <View
+        style={{
+          backgroundColor: 'red',
+          position: 'absolute',
+          top: 50,
+          right: 20,
+        }}>
+        <Text>{`${Math.floor(currentTime / 60)}:${
+          parseInt(currentTime) % 60
+        }`}</Text>
+      </View>
+    </>
   );
-}
-
-const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
-  },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-  },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
-  },
-  highlight: {
-    fontWeight: '700',
-  },
-});
+};
 
 export default App;
